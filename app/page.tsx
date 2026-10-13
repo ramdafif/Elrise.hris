@@ -7,6 +7,13 @@ import { Navbar } from '@/components/Navbar';
 import { ViewSkeleton } from '@/components/ViewSkeleton';
 
 // Dynamic lazy imports with uniform ViewSkeleton fallback
+const ClientsView = dynamic(
+  () => import('@/components/ClientsView').then((mod) => mod.ClientsView),
+  {
+    loading: () => <ViewSkeleton title="Kelola Client & Lisensi PT" subtitle="Memuat basis data client perusahaan dan konfigurasi modul..." />,
+  }
+);
+
 const DashboardView = dynamic(
   () => import('@/components/DashboardView').then((mod) => mod.DashboardView),
   {
@@ -98,10 +105,11 @@ import {
   KpiReview,
 } from '@/lib/types';
 import { Loader2, AlertCircle, CheckCircle2, ShieldAlert, ArrowLeft } from 'lucide-react';
+import { ElriseLogo, ElriseSymbol } from '@/components/ElriseLogo';
 
 export default function HomePage() {
-  // Navigation & User Session State (Defaults to Superadmin)
-  const [activeTab, setActiveTab] = useState('DASHBOARD');
+  // Navigation & User Session State (Defaults to Superadmin on CLIENTS tab)
+  const [activeTab, setActiveTab] = useState('CLIENTS');
   const [currentSession, setCurrentSession] = useState<UserSession>(DEMO_USERS[0]);
 
   // System Data State
@@ -172,8 +180,8 @@ export default function HomePage() {
       const leavePromise = fetch('/api/leave?limit=100', { headers }).then((r) => (r.ok ? r.json() : null));
       const otPromise = fetch('/api/overtime?limit=100', { headers }).then((r) => (r.ok ? r.json() : null));
 
-      // Strictly allow only SUPERADMIN and ADMIN_PT to access payroll API
-      const canAccessPayroll = sess.role === 'SUPERADMIN' || sess.role === 'ADMIN_PT';
+      // Payroll API is restricted to ADMIN_PT (company payroll) and EMPLOYEE (own payslip)
+      const canAccessPayroll = sess.role === 'ADMIN_PT' || sess.role === 'EMPLOYEE';
       const payPromise = canAccessPayroll
         ? fetch('/api/payroll?limit=100', { headers }).then((r) => (r.ok ? r.json() : null))
         : Promise.resolve(null);
@@ -640,20 +648,21 @@ export default function HomePage() {
 
   if (isLoading || !company) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-        <p className="mt-3 text-sm font-semibold text-slate-800">
-          Memuat Sistem Nusantara HRIS Enterprise...
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#F3F4EF]">
+        <ElriseSymbol size={56} className="animate-pulse mb-4" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#2FA493]" />
+        <p className="mt-3 text-sm font-bold text-[#123456]">
+          Memuat Sistem ELRISE HRIS Enterprise...
         </p>
-        <p className="text-xs text-slate-500">
-          Inisialisasi 52 Rekening Pegawai, Mesin PPh 21 TER, &amp; BPJS Indonesia
+        <p className="text-xs text-[#64748B] mt-0.5">
+          Inisialisasi Multi-Tenant Context, Mesin PPh 21 TER, &amp; BPJS Indonesia
         </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/70 font-sans text-slate-900 antialiased">
+    <div className="min-h-screen bg-[#F3F4EF] font-sans text-[#162D43] antialiased">
       {/* Toast Notification Banner with Motion */}
       <AnimatePresence>
         {toastMessage && (
@@ -662,10 +671,10 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -16, scale: 0.96 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-xl bg-slate-900/95 backdrop-blur-md px-4 py-3 text-xs font-semibold text-white shadow-2xl border border-slate-700"
+            className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-xl bg-[#123456]/95 backdrop-blur-md px-4 py-3 text-xs font-semibold text-white shadow-2xl border border-[#2FA493]/30"
           >
             {toastMessage.type === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="h-4 w-4 text-[#2FA493] shrink-0" />
             ) : (
               <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
             )}
@@ -686,35 +695,35 @@ export default function HomePage() {
       {/* Main Application Container with Motion Transition */}
       <main className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-8">
         <AnimatePresence mode="wait">
-          {!isTabAllowed(currentSession.role, activeTab) ? (
+          {!isTabAllowed(currentSession.role, activeTab, currentSession.tenantId) ? (
             <motion.div
               key={`restricted-${activeTab}-${currentSession.role}`}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-xs"
+              className="rounded-2xl border border-[#DFE7E8] bg-white p-8 text-center shadow-xs"
             >
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 mb-4 border border-rose-100">
                 <ShieldAlert className="h-7 w-7" />
               </div>
-              <h2 className="text-base font-bold text-slate-900">
-                Akses Dibatasi oleh Kebijakan Keamanan RBAC
+              <h2 className="text-base font-bold text-[#162D43]">
+                Akses Dibatasi oleh Kebijakan Keamanan RBAC / Lisensi Tenant
               </h2>
-              <p className="mt-2 text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-                Role Anda saat ini (<strong className="text-slate-900">{ROLE_LABELS[currentSession.role]?.title || currentSession.role}</strong>) tidak memiliki hak otorisasi untuk mengakses modul <span className="font-mono font-bold text-rose-700">{activeTab}</span>.
+              <p className="mt-2 text-xs text-[#64748B] max-w-md mx-auto leading-relaxed">
+                Role Anda saat ini (<strong className="text-[#162D43]">{ROLE_LABELS[currentSession.role]?.title || currentSession.role}</strong>) tidak memiliki hak otorisasi atau modul <span className="font-mono font-bold text-rose-700">{activeTab}</span> belum diaktifkan oleh Superadmin untuk perusahaan ini.
               </p>
               <p className="mt-1 text-[11px] text-slate-400 max-w-md mx-auto">
-                Silakan beralih ke role yang memiliki otorisasi (seperti Super Admin atau HR Manager) melalui tombol simulasi di pojok kanan atas.
+                Silakan beralih role atau aktifkan fitur terkait melalui menu simulasi di navigasi atas.
               </p>
               <div className="mt-6 flex justify-center">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('DASHBOARD')}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 active:scale-98 transition-all"
+                  onClick={() => setActiveTab(currentSession.role === 'SUPERADMIN' ? 'CLIENTS' : 'DASHBOARD')}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#123456] hover:bg-[#0D2742] px-4 py-2 text-xs font-semibold text-white shadow-xs active:scale-98 transition-all"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
-                  <span>Kembali ke Ikhtisar</span>
+                  <span>{currentSession.role === 'SUPERADMIN' ? 'Kembali ke Kelola Client' : 'Kembali ke Ikhtisar'}</span>
                 </button>
               </div>
             </motion.div>
@@ -727,7 +736,21 @@ export default function HomePage() {
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="w-full"
             >
-              {activeTab === 'DASHBOARD' && isTabAllowed(currentSession.role, 'DASHBOARD') && (
+              {activeTab === 'CLIENTS' && isTabAllowed(currentSession.role, 'CLIENTS', currentSession.tenantId) && (
+                <ClientsView
+                  session={currentSession}
+                  showToast={showToast}
+                  onSwitchUser={(userId) => {
+                    const target = DEMO_USERS.find((u) => u.id === userId);
+                    if (target) {
+                      setCurrentSession(target);
+                      setActiveTab('DASHBOARD');
+                    }
+                  }}
+                />
+              )}
+
+              {activeTab === 'DASHBOARD' && isTabAllowed(currentSession.role, 'DASHBOARD', currentSession.tenantId) && (
                 <DashboardView
                   employees={employees}
                   attendances={attendances}
@@ -845,10 +868,15 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer id="app-footer" className="mt-8 sm:mt-12 border-t border-slate-200 bg-white py-6 pb-24 md:pb-6">
-        <div className="mx-auto max-w-7xl px-4 text-center text-xs text-slate-500 sm:px-6 lg:px-8">
-          <p className="font-semibold text-slate-700">PT Elkyno Technology</p>
-          <p className="mt-1 text-slate-500">Enterprise HRIS &amp; Payroll Management System</p>
+      <footer id="app-footer" className="mt-8 sm:mt-12 border-t border-[#DFE7E8] bg-white py-6 pb-24 md:pb-6">
+        <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left text-xs text-[#64748B] sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2">
+            <ElriseLogo size="sm" variant="compact" />
+            <span className="text-[11px] text-[#64748B]">&bull; Enterprise HRIS &amp; Payroll Management System</span>
+          </div>
+          <p className="text-[11px] text-[#64748B]">
+            Platform Governance &bull; Strict Multi-Tenant Architecture &bull; 2026
+          </p>
         </div>
       </footer>
     </div>

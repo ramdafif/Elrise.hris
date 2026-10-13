@@ -70,20 +70,8 @@ export interface SecurityActor {
 }
 
 export const ROLE_EXTENDED_PERMISSIONS: Record<UserRole, ExtendedPermission[]> = {
-  // 1. SUPERADMIN (Platform Owner - Global Platform Scope)
+  // 1. SUPERADMIN (Platform Owner - Client & License Management Only)
   SUPERADMIN: [
-    'employee.read', 'employee.create', 'employee.update', 'employee.delete',
-    'employee.salary.read', 'employee.salary.update',
-    'attendance.read', 'attendance.create', 'attendance.approve',
-    'leave.read', 'leave.create', 'leave.approve',
-    'overtime.read', 'overtime.create', 'overtime.approve',
-    'payroll.read', 'payroll.calculate', 'payroll.approve', 'payroll.lock',
-    'payslip.read', 'documents.read', 'documents.download', 'documents.upload', 'documents.verify',
-    'reimbursement.read', 'reimbursement.create', 'reimbursement.approve',
-    'loan.read', 'loan.create', 'loan.approve',
-    'kpi.read', 'kpi.create', 'kpi.submit', 'kpi.review', 'kpi.finalize',
-    'project.read', 'project.create', 'project.update', 'project.delete', 'project.assign',
-    'tax.read', 'bpjs.read',
     'settings.read', 'settings.update',
     'audit.read', 'reports.read',
     'platform.manage', 'tenant.impersonate',

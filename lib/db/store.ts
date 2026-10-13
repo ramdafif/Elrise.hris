@@ -231,24 +231,26 @@ class HrisDataStore {
     ];
 
     // 4. Seed Historical Locked Payroll Period (Februari 2026) and Current Period (Maret 2026)
+    // 4. Seed Historical Locked Payroll Period (Februari 2026) and Current Period (Maret 2026) for PT A
     const febPeriod: PayrollPeriod = {
       id: 'period-2026-02',
+      tenantId: 'tenant-pt-a',
       code: '2026-02',
-      name: 'Periode Payroll Februari 2026',
+      name: 'Periode Payroll Februari 2026 (PT Alpha)',
       startDate: '2026-02-01',
       endDate: '2026-02-28',
       paymentDate: '2026-02-27',
       status: 'LOCKED',
-      totalEmployees: this.employees.length,
+      totalEmployees: this.employees.filter((e) => e.tenantId === 'tenant-pt-a').length,
       totalGrossPay: 0,
       totalPph21: 0,
       totalBpjsEmployee: 0,
       totalBpjsEmployer: 0,
       totalNetPay: 0,
       lockedAt: '2026-02-26T17:00:00Z',
-      lockedBy: 'Rizky Pratama (Payroll Admin)',
+      lockedBy: 'Budi Hartono (Admin PT A)',
       approvedAt: '2026-02-26T16:30:00Z',
-      approvedBy: 'Dewi Sekar Ayu (HR Admin)',
+      approvedBy: 'Budi Hartono (Admin PT A)',
     };
 
     // Calculate sample items for February
@@ -258,26 +260,28 @@ class HrisDataStore {
     let febBpjsEr = 0;
     let febNet = 0;
 
-    this.employees.forEach((emp) => {
-      const item = computeEmployeePayroll({
-        employee: emp,
-        periodId: febPeriod.id,
-        attendanceDays: 20,
-        overtimeHours: emp.id === 'emp-005' ? 3 : 0,
-        overtimePay: emp.id === 'emp-005' ? otPay1.overtimePay : 0,
+    this.employees
+      .filter((emp) => emp.tenantId === 'tenant-pt-a')
+      .forEach((emp) => {
+        const item = computeEmployeePayroll({
+          employee: emp,
+          periodId: febPeriod.id,
+          attendanceDays: 20,
+          overtimeHours: emp.id === 'emp-005' ? 3 : 0,
+          overtimePay: emp.id === 'emp-005' ? otPay1.overtimePay : 0,
+        });
+
+        item.tenantId = 'tenant-pt-a';
+        item.isPaid = true;
+        item.paidAt = '2026-02-27T10:00:00Z';
+        this.payrollItems.push(item);
+
+        febGross += item.grossSalary;
+        febPph += item.pph21Amount;
+        febBpjsEmp += item.bpjsKesEmployee + item.bpjsTkJhtEmployee + item.bpjsTkJpEmployee;
+        febBpjsEr += item.totalEmployerCost;
+        febNet += item.netSalary;
       });
-
-      item.isPaid = true;
-      item.paidAt = '2026-02-27T10:00:00Z';
-      this.payrollItems.push(item);
-
-      febGross += item.grossSalary;
-      febPph += item.pph21Amount;
-      febBpjsEmp +=
-        item.bpjsKesEmployee + item.bpjsTkJhtEmployee + item.bpjsTkJpEmployee;
-      febBpjsEr += item.totalEmployerCost;
-      febNet += item.netSalary;
-    });
 
     febPeriod.totalGrossPay = febGross;
     febPeriod.totalPph21 = febPph;
@@ -285,16 +289,17 @@ class HrisDataStore {
     febPeriod.totalBpjsEmployer = febBpjsEr;
     febPeriod.totalNetPay = febNet;
 
-    // Current Active March Period (Ready for calculating or review)
+    // Current Active March Period for PT A
     const marPeriod: PayrollPeriod = {
       id: 'period-2026-03',
+      tenantId: 'tenant-pt-a',
       code: '2026-03',
-      name: 'Periode Payroll Maret 2026',
+      name: 'Periode Payroll Maret 2026 (PT Alpha)',
       startDate: '2026-03-01',
       endDate: '2026-03-31',
       paymentDate: '2026-03-27',
       status: 'REVIEW',
-      totalEmployees: this.employees.length,
+      totalEmployees: this.employees.filter((e) => e.tenantId === 'tenant-pt-a').length,
       totalGrossPay: 0,
       totalPph21: 0,
       totalBpjsEmployee: 0,
@@ -308,23 +313,25 @@ class HrisDataStore {
     let marBpjsEr = 0;
     let marNet = 0;
 
-    this.employees.forEach((emp) => {
-      const item = computeEmployeePayroll({
-        employee: emp,
-        periodId: marPeriod.id,
-        attendanceDays: 22,
-        overtimeHours: emp.id === 'emp-005' ? 3 : 0,
-        overtimePay: emp.id === 'emp-005' ? otPay1.overtimePay : 0,
-      });
+    this.employees
+      .filter((emp) => emp.tenantId === 'tenant-pt-a')
+      .forEach((emp) => {
+        const item = computeEmployeePayroll({
+          employee: emp,
+          periodId: marPeriod.id,
+          attendanceDays: 22,
+          overtimeHours: emp.id === 'emp-005' ? 3 : 0,
+          overtimePay: emp.id === 'emp-005' ? otPay1.overtimePay : 0,
+        });
 
-      this.payrollItems.push(item);
-      marGross += item.grossSalary;
-      marPph += item.pph21Amount;
-      marBpjsEmp +=
-        item.bpjsKesEmployee + item.bpjsTkJhtEmployee + item.bpjsTkJpEmployee;
-      marBpjsEr += item.totalEmployerCost;
-      marNet += item.netSalary;
-    });
+        item.tenantId = 'tenant-pt-a';
+        this.payrollItems.push(item);
+        marGross += item.grossSalary;
+        marPph += item.pph21Amount;
+        marBpjsEmp += item.bpjsKesEmployee + item.bpjsTkJhtEmployee + item.bpjsTkJpEmployee;
+        marBpjsEr += item.totalEmployerCost;
+        marNet += item.netSalary;
+      });
 
     marPeriod.totalGrossPay = marGross;
     marPeriod.totalPph21 = marPph;
@@ -332,7 +339,58 @@ class HrisDataStore {
     marPeriod.totalBpjsEmployer = marBpjsEr;
     marPeriod.totalNetPay = marNet;
 
-    this.payrollPeriods = [marPeriod, febPeriod];
+    // PT B Active March Period
+    const ptBEmployees = this.employees.filter((e) => e.tenantId === 'tenant-pt-b');
+    const marPeriodPtB: PayrollPeriod = {
+      id: 'period-pt-b-2026-03',
+      tenantId: 'tenant-pt-b',
+      code: 'BETA-2026-03',
+      name: 'Periode Payroll Maret 2026 (PT Beta)',
+      startDate: '2026-03-01',
+      endDate: '2026-03-31',
+      paymentDate: '2026-03-27',
+      status: 'CALCULATED',
+      totalEmployees: ptBEmployees.length,
+      totalGrossPay: 0,
+      totalPph21: 0,
+      totalBpjsEmployee: 0,
+      totalBpjsEmployer: 0,
+      totalNetPay: 0,
+      calculatedAt: '2026-03-25T14:00:00Z',
+      calculatedBy: 'Siti Rahmawati (Admin PT B)',
+    };
+
+    let ptBGross = 0;
+    let ptBPph = 0;
+    let ptBBpjsEmp = 0;
+    let ptBBpjsEr = 0;
+    let ptBNet = 0;
+
+    ptBEmployees.forEach((emp) => {
+      const item = computeEmployeePayroll({
+        employee: emp,
+        periodId: marPeriodPtB.id,
+        attendanceDays: 22,
+        overtimeHours: 0,
+        overtimePay: 0,
+      });
+
+      item.tenantId = 'tenant-pt-b';
+      this.payrollItems.push(item);
+      ptBGross += item.grossSalary;
+      ptBPph += item.pph21Amount;
+      ptBBpjsEmp += item.bpjsKesEmployee + item.bpjsTkJhtEmployee + item.bpjsTkJpEmployee;
+      ptBBpjsEr += item.totalEmployerCost;
+      ptBNet += item.netSalary;
+    });
+
+    marPeriodPtB.totalGrossPay = ptBGross;
+    marPeriodPtB.totalPph21 = ptBPph;
+    marPeriodPtB.totalBpjsEmployee = ptBBpjsEmp;
+    marPeriodPtB.totalBpjsEmployer = ptBBpjsEr;
+    marPeriodPtB.totalNetPay = ptBNet;
+
+    this.payrollPeriods = [marPeriod, febPeriod, marPeriodPtB];
 
     // 5. Seed Reimbursements & Loans
     this.reimbursements = [

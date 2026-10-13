@@ -1,1 +1,69 @@
 @import "tailwindcss";
+
+@theme {
+  --color-primary-navy: #123456;
+  --color-primary-hover: #0D2742;
+  --color-brand-teal: #2FA493;
+  --color-teal-hover: #258577;
+  --color-teal-soft: #E6F5F1;
+  --color-teal-dark: #197568;
+  --color-bg-app: #F3F4EF;
+  --color-surface-card: #FFFFFF;
+  --color-text-main: #162D43;
+  --color-text-muted: #64748B;
+  --color-border-elrise: #DFE7E8;
+}
+
+:root {
+  --elrise-navy: #123456;
+  --elrise-navy-hover: #0D2742;
+  --elrise-teal: #2FA493;
+  --elrise-teal-hover: #258577;
+  --elrise-teal-soft: #E6F5F1;
+  --elrise-teal-dark: #197568;
+  --elrise-bg: #F3F4EF;
+  --elrise-surface: #FFFFFF;
+  --elrise-text-main: #162D43;
+  --elrise-text-muted: #64748B;
+  --elrise-border: #DFE7E8;
+}
+
+/* Base App Body - Off-white ELRISE canvas */
+body {
+  background-color: #F3F4EF;
+  color: #162D43;
+  min-height: 100vh;
+}
+
+/* Custom interactive utility classes for ELRISE styling */
+.elrise-btn-primary {
+  background-color: #123456;
+  color: #FFFFFF;
+  transition: all 0.15s ease-in-out;
+}
+.elrise-btn-primary:hover {
+  background-color: #0D2742;
+}
+
+.elrise-btn-secondary {
+  background-color: #E6F5F1;
+  color: #197568;
+  transition: all 0.15s ease-in-out;
+}
+.elrise-btn-secondary:hover {
+  background-color: #D3EEE7;
+  color: #0F5349;
+}
+
+.elrise-card {
+  background-color: #FFFFFF;
+  border: 1px solid #DFE7E8;
+  box-shadow: 0 1px 2px 0 rgba(18, 52, 86, 0.04);
+}
+
+.elrise-card-hero {
+  background: linear-gradient(135deg, #123456 0%, #0F2D4C 60%, #091F35 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px -2px rgba(18, 52, 86, 0.12);
+}
