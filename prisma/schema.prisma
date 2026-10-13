@@ -1,0 +1,886 @@
+// Prisma Schema for Nusantara HRIS Enterprise
+// National-Scale Indonesian HRIS & Payroll Platform
+// Fully Compliant with Indonesian Employment & Taxation Regulations (UU PDP, PP 58/2023, PP 35/2021)
+// Multi-Tenant SaaS Ready Architecture with Strict Tenant Scoping & Immutability
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------------------------------------------------
+// 0. MULTI-TENANT & SAAS SUBSCRIPTION LAYER
+// -------------------------------------------------------------
+
+enum TenantTier {
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+enum TenantStatus {
+  ACTIVE
+  TRIAL
+  SUSPENDED
+  EXPIRED
+}
+
+model Tenant {
+  id                 String              @id @default(uuid())
+  code               String              @unique // e.g. NUSANTARA-TECH, BUMN-01
+  name               String
+  legalName          String
+  tier               TenantTier          @default(ENTERPRISE)
+  status             TenantStatus        @default(ACTIVE)
+  maxEmployees       Int                 @default(50000)
+  storageLimitMb     Int                 @default(102400) // 100 GB
+  features           Json                @default("[\"PAYROLL_ADVANCED\", \"PPH21_TER\", \"BPJS_AUTO\", \"REPORTS_CUSTOM\", \"API_ACCESS\", \"AUDIT_ENTERPRISE\"]")
+  subscriptionEndsAt DateTime?
+  
+  // Multi-tenant scoped relations
+  companies          Company[]
+  branches           Branch[]
+  departments        Department[]
+  positions          Position[]
+  projects           Project[]
+  projectAssignments EmployeeProjectAssignment[]
+  employees          Employee[]
+  users              User[]
+  attendances        Attendance[]
+  leaveRequests      LeaveRequest[]
+  overtimeRequests   OvertimeRequest[]
+  payrollPeriods     PayrollPeriod[]
+  payrollItems       PayrollItem[]
+  reimbursements     Reimbursement[]
+  employeeLoans      EmployeeLoan[]
+  kpiReviews         KpiReview[]
+  employeeDocuments  EmployeeDocument[]
+  auditLogs          AuditLog[]
+  subscriptions      Subscription[]
+  jobVacancies       JobVacancy[]
+  candidates         Candidate[]
+  trainingPrograms   TrainingProgram[]
+  
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([code])
+  @@index([status])
+}
+
+model Subscription {
+  id                 String       @id @default(uuid())
+  tenantId           String
+  tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan               TenantTier   @default(ENTERPRISE)
+  billingCycle       String       @default("ANNUAL") // MONTHLY, ANNUAL
+  status             String       @default("ACTIVE") // ACTIVE, PAST_DUE, CANCELLED
+  currentPeriodStart DateTime     @default(now())
+  currentPeriodEnd   DateTime
+  amount             Decimal      @db.Decimal(15, 2)
+  currency           String       @default("IDR")
+  invoiceNumber      String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([tenantId])
+}
+
+model TenantUsage {
+  id                String   @id @default(uuid())
+  tenantId          String   @unique
+  activeEmployees   Int      @default(0)
+  storageUsedBytes  BigInt   @default(0)
+  payrollRunsCount  Int      @default(0)
+  apiCallsThisMonth Int      @default(0)
+  updatedAt         DateTime @updatedAt
+}
+
+// -------------------------------------------------------------
+// 1. COMPANY & ORGANIZATIONAL STRUCTURE
+// -------------------------------------------------------------
+
+model Company {
+  id               String       @id @default(uuid())
+  tenantId         String
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String       @default("PT Elkyno Technology")
+  legalName        String       @default("PT Elkyno Technology Tbk")
+  taxId            String       @default("01.234.567.8-012.000") // NPWP Perusahaan
+  nib              String       @default("9120001234567") // Nomor Induk Berusaha
+  bpjsKesCompanyId String       @default("0012345678") // Kode Badan Usaha BPJS Kes
+  bpjsTkCompanyId  String       @default("2109876543") // NPP BPJS Ketenagakerjaan
+  address          String       @default("Gedung Cyber 2, Lt. 18, Jl. H.R. Rasuna Said, Kuningan, Jakarta Selatan")
+  city             String       @default("Jakarta Selatan")
+  postalCode       String       @default("12950")
+  phone            String       @default("+62 21 5299 8000")
+  email            String       @default("hr@nusantaratech.co.id")
+  website          String       @default("https://nusantaratech.co.id")
+  bankName         String       @default("Bank Central Asia (BCA)")
+  bankAccountNumber String     @default("0088997766")
+  bankAccountHolder String     @default("PT Elkyno Technology")
+  branches         Branch[]
+  departments      Department[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([tenantId])
+}
+
+model Branch {
+  id           String       @id @default(uuid())
+  tenantId     String
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  companyId    String
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  code         String       @unique // e.g. JKT-HO, SBY-01, BDG-01
+  name         String // Kantor Pusat Jakarta, Cabang Surabaya, Cabang Bandung
+  address      String
+  city         String
+  umrAmount    Decimal      @db.Decimal(15, 2) // Upah Minimum Regional
+  latitude     Float        @default(-6.2255)
+  longitude    Float        @default(106.8286)
+  radiusMeters Int          @default(150)
+  departments  Department[]
+  employees    Employee[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([tenantId])
+}
+
+model Department {
+  id          String     @id @default(uuid())
+  tenantId    String
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  companyId   String
+  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branchId    String?
+  branch      Branch?    @relation(fields: [branchId], references: [id])
+  code        String     @unique // e.g. ENG, HR, FIN, MKT, OPS, PROD
+  name        String
+  description String?
+  costCenter  String     @default("CC-100")
+  positions   Position[]
+  employees   Employee[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([tenantId])
+}
+
+model Position {
+  id            String     @id @default(uuid())
+  tenantId      String
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  departmentId  String
+  department    Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  code          String     @unique
+  title         String
+  level         String     @default("Staff") // C-Level, VP, Manager, Lead, Senior Staff, Staff, Intern
+  baseSalaryMin Decimal    @db.Decimal(15, 2)
+  baseSalaryMax Decimal    @db.Decimal(15, 2)
+  employees     Employee[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([tenantId])
+}
+
+// -------------------------------------------------------------
+// 1.1 PROJECTS & OPERATIONAL ASSIGNMENTS (OPERATIONAL SCOPE)
+// -------------------------------------------------------------
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+model Project {
+  id          String                      @id @default(uuid())
+  tenantId    String
+  tenant      Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code        String                      // e.g. PRJ-JKT-01, PRJ-SBY-02
+  name        String                      // e.g. Project Jakarta Smart City
+  description String?
+  status      ProjectStatus               @default(ACTIVE)
+  startDate   DateTime                    @db.Date
+  endDate     DateTime?                   @db.Date
+  location    String?
+  managerId   String?
+  budget      Decimal?                    @db.Decimal(15, 2)
+  assignments EmployeeProjectAssignment[]
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  COMPLETED
+  TRANSFERRED
+  INACTIVE
+}
+
+model EmployeeProjectAssignment {
+  id         String           @id @default(uuid())
+  tenantId   String
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  projectId  String
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectPosition String           @default("MEMBER") // Operational function (PROJECT_LEAD, ENGINEER, ANALYST, COORDINATOR, OPERATOR, MEMBER)
+  role            String           @default("MEMBER") // Compatibility alias
+  startDate  DateTime         @db.Date
+  endDate    DateTime?        @db.Date
+  status     AssignmentStatus @default(ACTIVE)
+  isPrimary  Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([tenantId, projectId])
+  @@index([tenantId, employeeId])
+  @@index([employeeId, status])
+}
+
+// -------------------------------------------------------------
+// 2. EMPLOYEE MASTER & PROFILES
+// -------------------------------------------------------------
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+}
+
+enum EmploymentType {
+  PERMANENT // PKWTT
+  CONTRACT // PKWT
+  PROBATION
+  INTERNSHIP
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  PROBATION
+  SUSPENDED
+  RESIGNED
+  TERMINATED
+}
+
+enum TaxPtkpStatus {
+  TK_0
+  TK_1
+  TK_2
+  TK_3
+  K_0
+  K_1
+  K_2
+  K_3
+}
+
+model Employee {
+  id              String         @id @default(uuid())
+  tenantId        String
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId      String         @unique // NIK Karyawan e.g. NTM-2023-001
+  nikKtp          String         @unique // Nomor Induk Kependudukan 16 digit (Protected by UU PDP)
+  fullName        String
+  nickname        String?
+  email           String         @unique
+  phone           String
+  birthPlace      String
+  birthDate       DateTime
+  gender          Gender
+  maritalStatus   MaritalStatus
+  religion        String         @default("Islam")
+  addressKtp      String
+  addressCurrent  String?
+  emergencyName   String?
+  emergencyPhone  String?
+  emergencyRel    String?
+
+  // Employment Details
+  branchId        String
+  branch          Branch         @relation(fields: [branchId], references: [id])
+  departmentId    String
+  department      Department     @relation(fields: [departmentId], references: [id])
+  positionId      String
+  position        Position       @relation(fields: [positionId], references: [id])
+  managerId       String?
+  manager         Employee?      @relation("ManagerSubordinates", fields: [managerId], references: [id])
+  subordinates    Employee[]     @relation("ManagerSubordinates")
+  joinDate        DateTime
+  contractEndDate DateTime?
+  permanentDate   DateTime?
+  employmentType  EmploymentType @default(PERMANENT)
+  status          EmployeeStatus @default(ACTIVE)
+
+  // Financial & Payroll Profile (Strict Decimal precision)
+  basicSalary       Decimal       @db.Decimal(15, 2)
+  fixedAllowance    Decimal       @default(0) @db.Decimal(15, 2) // Tunjangan Jabatan / Tetap
+  mealAllowance     Decimal       @default(0) @db.Decimal(15, 2) // Tunjangan Makan per hari hadir
+  transportAllowance Decimal      @default(0) @db.Decimal(15, 2) // Tunjangan Transport per hari hadir
+  communicationAllowance Decimal  @default(0) @db.Decimal(15, 2)
+
+  // Bank Info
+  bankName          String        @default("BCA")
+  bankAccountNumber String
+  bankAccountHolder String
+
+  // Tax & BPJS Info
+  npwp              String?       // NPWP 15/16 digit
+  ptkpStatus        TaxPtkpStatus @default(TK_0)
+  hasNpwp           Boolean       @default(true)
+  bpjsKesNumber     String?       // 13 digit
+  bpjsTkNumber      String?       // 11 digit
+  isBpjsKesActive   Boolean       @default(true)
+  isBpjsTkActive    Boolean       @default(true)
+
+  // Scoped Relationships
+  attendances       Attendance[]
+  leaveRequests     LeaveRequest[]
+  overtimeRequests  OvertimeRequest[]
+  projectAssignments EmployeeProjectAssignment[]
+  payrollItems      PayrollItem[]
+  salaryHistories   SalaryHistory[]
+  documents         EmployeeDocument[]
+  reimbursements    Reimbursement[]
+  loans             EmployeeLoan[]
+  kpiReviews        KpiReview[]
+  trainingAttendances TrainingParticipant[]
+
+  userId            String?       @unique
+  user              User?         @relation(fields: [userId], references: [id])
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, departmentId])
+  @@index([tenantId, branchId])
+  @@index([tenantId, employeeId])
+}
+
+model SalaryHistory {
+  id            String    @id @default(uuid())
+  employeeId    String
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  oldSalary     Decimal   @db.Decimal(15, 2)
+  newSalary     Decimal   @db.Decimal(15, 2)
+  effectiveDate DateTime
+  reason        String // Promotion, Annual Review, Minimum Wage Adjustment
+  approvedBy    String
+  createdAt     DateTime  @default(now())
+
+  @@index([employeeId])
+}
+
+// -------------------------------------------------------------
+// 3. ATTENDANCE, WORK SCHEDULE & LEAVE
+// -------------------------------------------------------------
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  EARLY_LEAVE
+  HALF_DAY
+  ABSENT
+  ON_LEAVE
+  HOLIDAY
+  BUSINESS_TRIP
+}
+
+enum AttendanceSource {
+  MOBILE_APP
+  WEB_PORTAL
+  BIOMETRIC_DEVICE
+  MANUAL_INPUT
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model Attendance {
+  id              String           @id @default(uuid())
+  tenantId        String
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date            DateTime         @db.Date
+  checkIn         DateTime?
+  checkOut        DateTime?
+  workDurationMin Int              @default(0)
+  lateDurationMin Int              @default(0)
+  earlyLeaveMin   Int              @default(0)
+  status          AttendanceStatus @default(PRESENT)
+  workLocation    String           @default("WFO") // WFO, WFH, CLIENT_SITE
+  latitudeIn      Float?
+  longitudeIn     Float?
+  ipAddress       String?
+  source          AttendanceSource @default(WEB_PORTAL)
+  notes           String?
+  isCorrected     Boolean          @default(false)
+  correctionNotes String?
+  approvalStatus  ApprovalStatus   @default(APPROVED)
+  approvedBy      String?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([tenantId, date])
+  @@index([tenantId, employeeId, date])
+  @@index([tenantId, status])
+}
+
+model Holiday {
+  id          String   @id @default(uuid())
+  name        String
+  date        DateTime @db.Date
+  isCollective Boolean  @default(false) // Cuti Bersama
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+}
+
+model LeaveType {
+  id                 String         @id @default(uuid())
+  code               String         @unique // ANNUAL, SICK, MATERNITY, PATERNITY, MARRIAGE, BEREAVEMENT, UNPAID
+  name               String
+  annualEntitlement  Int            @default(12) // Days per year
+  carryForwardMax    Int            @default(6) // Max carry forward days
+  requiresAttachment Boolean        @default(false) // e.g. Surat Dokter for sick leave
+  isPaid             Boolean        @default(true)
+  requests           LeaveRequest[]
+  createdAt          DateTime       @default(now())
+}
+
+model LeaveRequest {
+  id             String         @id @default(uuid())
+  tenantId       String
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId     String
+  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId    String
+  leaveType      LeaveType      @relation(fields: [leaveTypeId], references: [id])
+  startDate      DateTime       @db.Date
+  endDate        DateTime       @db.Date
+  totalDays      Int
+  reason         String
+  attachmentUrl  String?
+  status         ApprovalStatus @default(PENDING)
+  managerNotes   String?
+  approvedBy     String?
+  approvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, employeeId])
+}
+
+model OvertimeRequest {
+  id               String         @id @default(uuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId       String
+  employee         Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date             DateTime       @db.Date
+  startTime        String // HH:mm e.g. 17:30
+  endTime          String // HH:mm e.g. 20:30
+  durationHours    Float          @default(3.0)
+  calculatedHours  Float          @default(5.5) // Formula PP 35/2021 applied hours
+  overtimePay      Decimal        @default(0) @db.Decimal(15, 2)
+  reason           String
+  status           ApprovalStatus @default(PENDING)
+  managerNotes     String?
+  approvedBy       String?
+  approvedAt       DateTime?
+  payrollPeriodId  String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, employeeId])
+}
+
+// -------------------------------------------------------------
+// 4. PAYROLL, BPJS & PPH 21 CALCULATION ENGINE
+// -------------------------------------------------------------
+
+enum PayrollStatus {
+  DRAFT
+  CALCULATING
+  REVIEW
+  APPROVED
+  LOCKED
+  PAID
+}
+
+model PayrollPeriod {
+  id                String        @id @default(uuid())
+  tenantId          String
+  tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code              String        @unique // e.g. 2026-03
+  name              String // Periode Maret 2026
+  startDate         DateTime      @db.Date
+  endDate           DateTime      @db.Date
+  paymentDate       DateTime      @db.Date
+  status            PayrollStatus @default(DRAFT)
+  totalEmployees    Int           @default(0)
+  totalGrossPay     Decimal       @default(0) @db.Decimal(15, 2)
+  totalPph21        Decimal       @default(0) @db.Decimal(15, 2)
+  totalBpjsEmployee Decimal       @default(0) @db.Decimal(15, 2)
+  totalBpjsEmployer Decimal       @default(0) @db.Decimal(15, 2)
+  totalNetPay       Decimal       @default(0) @db.Decimal(15, 2)
+  lockedAt          DateTime?
+  lockedBy          String?
+  approvedAt        DateTime?
+  approvedBy        String?
+  items             PayrollItem[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([tenantId, code])
+  @@index([tenantId, status])
+}
+
+model PayrollItem {
+  id                  String        @id @default(uuid())
+  tenantId            String
+  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payrollPeriodId     String
+  payrollPeriod       PayrollPeriod @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  employeeId          String
+  employee            Employee      @relation(fields: [employeeId], references: [id])
+
+  // Earnings (Strict Decimal)
+  basicSalary         Decimal       @db.Decimal(15, 2)
+  fixedAllowance      Decimal       @default(0) @db.Decimal(15, 2)
+  variableAllowance   Decimal       @default(0) @db.Decimal(15, 2) // Transport + Meal based on presence
+  overtimePay         Decimal       @default(0) @db.Decimal(15, 2)
+  bonusThr            Decimal       @default(0) @db.Decimal(15, 2)
+  reimbursementPay    Decimal       @default(0) @db.Decimal(15, 2)
+  grossSalary         Decimal       @db.Decimal(15, 2)
+
+  // Employee Deductions
+  bpjsKesEmployee     Decimal       @default(0) @db.Decimal(15, 2) // 1% (Cap Rp 12.000.000)
+  bpjsTkJhtEmployee   Decimal       @default(0) @db.Decimal(15, 2) // 2%
+  bpjsTkJpEmployee    Decimal       @default(0) @db.Decimal(15, 2) // 1% (Cap Rp 10.042.300)
+  pph21Amount         Decimal       @default(0) @db.Decimal(15, 2) // Berdasarkan PP 58/2023 & PMK 168/2023
+  loanDeduction       Decimal       @default(0) @db.Decimal(15, 2)
+  absenceDeduction    Decimal       @default(0) @db.Decimal(15, 2)
+  totalDeductions     Decimal       @db.Decimal(15, 2)
+
+  // Employer Contributions (Cost to Company, does not reduce employee net pay)
+  bpjsKesEmployer     Decimal       @default(0) @db.Decimal(15, 2) // 4% (Cap Rp 12.000.000)
+  bpjsTkJhtEmployer   Decimal       @default(0) @db.Decimal(15, 2) // 3.7%
+  bpjsTkJpEmployer    Decimal       @default(0) @db.Decimal(15, 2) // 2% (Cap Rp 10.042.300)
+  bpjsTkJkkEmployer   Decimal       @default(0) @db.Decimal(15, 2) // 0.24% - 1.74%
+  bpjsTkJkmEmployer   Decimal       @default(0) @db.Decimal(15, 2) // 0.30%
+  totalEmployerCost   Decimal       @default(0) @db.Decimal(15, 2)
+
+  netSalary           Decimal       @db.Decimal(15, 2)
+
+  // Audit & Calculation Transparency Snapshot (Immutable)
+  taxCalculationSnapshot Json       // Full breakdown: TER category, TER rate, taxable gross, formula
+  bpjsCalculationSnapshot Json      // Breakdown: rates, caps, bases
+  attendanceSummarySnapshot Json    // Days present, late, absent, overtime hours
+  isPaid              Boolean       @default(false)
+  paidAt              DateTime?
+  payslipUrl          String?
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@unique([payrollPeriodId, employeeId])
+  @@index([tenantId, payrollPeriodId])
+  @@index([tenantId, employeeId])
+}
+
+// -------------------------------------------------------------
+// 5. REGULATION RULES (VERSIONED & AUDITABLE)
+// -------------------------------------------------------------
+
+model GovernmentRegulation {
+  id               String    @id @default(uuid())
+  category         String // PPH21_TER, BPJS_KES, BPJS_TK, OVERTIME, THR, MINIMUM_WAGE
+  regulationName   String // e.g. PP No. 58 Tahun 2023 & PMK No. 168 Tahun 2023
+  regulationNumber String // PP 58/2023 & PMK 168/2023
+  authority        String    @default("Kementerian Keuangan RI / DJP")
+  officialSource   String // JDIH Kemenkeu / DJP
+  sourceUrl        String?
+  effectiveFrom    DateTime
+  effectiveUntil   DateTime?
+  parameters       Json // Tier tables, rates, ceilings
+  version          Int       @default(1)
+  isActive         Boolean   @default(true)
+  notes            String?
+  verifiedAt       DateTime  @default(now())
+  verifiedBy       String    @default("Indonesian Payroll Specialist")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([category, isActive])
+  @@index([effectiveFrom, effectiveUntil])
+}
+
+// -------------------------------------------------------------
+// 6. REIMBURSEMENT & EMPLOYEE LOAN
+// -------------------------------------------------------------
+
+model Reimbursement {
+  id          String         @id @default(uuid())
+  tenantId    String
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  category    String // Medical, Travel, Meal, Office Supplies, Client Entertainment
+  amount      Decimal        @db.Decimal(15, 2)
+  description String
+  receiptUrl  String?
+  status      ApprovalStatus @default(PENDING)
+  approvedBy  String?
+  approvedAt  DateTime?
+  paidInPayroll Boolean      @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, employeeId])
+}
+
+model EmployeeLoan {
+  id               String    @id @default(uuid())
+  tenantId         String
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId       String
+  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  principalAmount  Decimal   @db.Decimal(15, 2)
+  installmentCount Int // Tenor bulan e.g. 10
+  monthlyDeduction Decimal   @db.Decimal(15, 2)
+  remainingBalance Decimal   @db.Decimal(15, 2)
+  purpose          String
+  status           String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  startDate        DateTime
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, employeeId])
+}
+
+// -------------------------------------------------------------
+// 7. PERFORMANCE, DOCUMENTS, RECRUITMENT & TRAINING
+// -------------------------------------------------------------
+
+model KpiReview {
+  id           String    @id @default(uuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  period       String // 2025-Q4, 2026-Q1, 2026-Annual
+  selfScore    Float?
+  managerScore Float?
+  finalScore   Float? // 1.0 - 5.0
+  selfNotes    String?
+  managerNotes String?
+  status       String    @default("DRAFT") // DRAFT, SUBMITTED, REVIEWED, FINALIZED
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([tenantId, period])
+  @@index([tenantId, employeeId])
+}
+
+model EmployeeDocument {
+  id             String    @id @default(uuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId     String
+  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  category       String // KTP, NPWP, KK, BPJS, CONTRACT_PKWT, DIPLOMA, CERTIFICATE, MEDICAL
+  fileName       String
+  fileUrl        String
+  fileSizeKb     Int       @default(250)
+  expiryDate     DateTime?
+  isVerified     Boolean   @default(true)
+  verifiedBy     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId, employeeId])
+  @@index([tenantId, category])
+}
+
+model JobVacancy {
+  id           String       @id @default(uuid())
+  tenantId     String
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title        String
+  department   String
+  location     String
+  type         EmploymentType @default(PERMANENT)
+  slots        Int          @default(1)
+  status       String       @default("OPEN") // DRAFT, OPEN, CLOSED, FILLED
+  description  String
+  requirements String
+  candidates   Candidate[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([tenantId, status])
+}
+
+model Candidate {
+  id           String       @id @default(uuid())
+  tenantId     String
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vacancyId    String
+  vacancy      JobVacancy   @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+  fullName     String
+  email        String
+  phone        String
+  resumeUrl    String?
+  status       String       @default("APPLIED") // APPLIED, SCREENING, INTERVIEW, OFFER, HIRED, REJECTED
+  stageNotes   String?
+  interviewAt  DateTime?
+  convertedEmployeeId String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([tenantId, vacancyId])
+  @@index([tenantId, status])
+}
+
+model TrainingProgram {
+  id           String       @id @default(uuid())
+  tenantId     String
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title        String
+  category     String // Leadership, Technical, Compliance, Soft Skills
+  provider     String
+  cost         Decimal      @default(0) @db.Decimal(15, 2)
+  durationHours Int         @default(8)
+  participants TrainingParticipant[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([tenantId])
+}
+
+model TrainingParticipant {
+  id           String          @id @default(uuid())
+  trainingId   String
+  training     TrainingProgram @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  employeeId   String
+  employee     Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  status       String          @default("ENROLLED") // ENROLLED, ATTENDED, PASSED, FAILED
+  certificateUrl String?
+  completionDate DateTime?
+
+  @@unique([trainingId, employeeId])
+  @@index([employeeId])
+}
+
+// -------------------------------------------------------------
+// 8. SECURITY, RBAC & AUDIT LOGS
+// -------------------------------------------------------------
+
+enum Role {
+  SUPERADMIN
+  ADMIN_PT
+  ADMIN_PROJECT
+  EMPLOYEE
+}
+
+enum ScopeType {
+  PLATFORM_GLOBAL
+  TENANT
+  PROJECT
+  SELF
+}
+
+model UserScope {
+  id         String     @id @default(uuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scopeType  ScopeType  @default(TENANT)
+  tenantId   String?
+  projectIds Json?      // Array of project IDs string[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([tenantId])
+}
+
+model User {
+  id           String      @id @default(uuid())
+  tenantId     String?     // Nullable for PLATFORM_SUPER_ADMIN / PLATFORM_ADMIN
+  tenant       Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String      @unique
+  passwordHash String
+  name         String
+  role         Role        @default(EMPLOYEE)
+  isActive     Boolean     @default(true)
+  employee     Employee?
+  scopes       UserScope[]
+  lastLoginAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([tenantId, email])
+  @@index([role])
+}
+
+model AuditLog {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId          String?
+  userName        String   @default("System")
+  userRole        String   @default("SYSTEM")
+  actorScope      String?  @default("TENANT") // PLATFORM, TENANT, PROJECT, EMPLOYEE
+  targetTenantId  String?  // For cross-tenant audited actions
+  targetProjectId String?  // For project-scoped audited actions
+  action          String   // CREATE, UPDATE, DELETE, CALCULATE, APPROVE, LOCK, EXPORT, CROSS_TENANT_ACCESS
+  module          String   // EMPLOYEE, PAYROLL, ATTENDANCE, LEAVE, OVERTIME, TAX_RULE, BPJS_RULE, SECURITY, PROJECT
+  entity          String
+  entityId        String
+  oldValues       Json?
+  newValues       Json?
+  reason          String?
+  ipAddress       String?  @default("127.0.0.1")
+  timestamp       DateTime @default(now())
+
+  @@index([tenantId, timestamp])
+  @@index([tenantId, module])
+  @@index([tenantId, action])
+  @@index([targetTenantId, timestamp])
+}

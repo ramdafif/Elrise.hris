@@ -1,0 +1,6 @@
+{
+  "name": "Nusantara HRIS Enterprise",
+  "description": "Sistem Informasi Manajemen SDM & Payroll Enterprise Indonesia yang telah diperkuat dengan Semi-Production Security & Hardening: kepatuhan UU PDP No. 27/2022, isolasi multi-tenant, prinsip empat mata (Four-Eyes), proteksi IDOR, dan enkripsi at-rest.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
