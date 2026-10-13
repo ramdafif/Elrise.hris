@@ -4,7 +4,7 @@ export async function register() {
     process.env.DATABASE_URL = DEFAULT_DATABASE_URL;
   }
 
-  if (process.platform === 'linux') {
+  if (process.env.NODE_ENV !== 'production' && process.platform === 'linux') {
     try {
       const { exec } = await import('child_process');
       exec('pg_isready -h localhost -p 5432 -q 2>/dev/null || su - postgres -c "pg_ctlcluster 15 main start" 2>/dev/null || true');

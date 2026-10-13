@@ -44,7 +44,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://*.google.com https://*.run.app https://ai.studio;",
+            value: "frame-ancestors 'self' https://*.google.com https://*.run.app https://aistudio.google.com",
           },
         ],
       },

@@ -424,14 +424,22 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     </p>
                   </div>
 
-                  {/* Summary of Active Features */}
+                  {/* Summary of Active Features & Employees */}
                   <div className="mt-3 flex items-center justify-between pt-2 border-t border-[#DFE7E8]/70 text-[11px]">
-                    <span className="text-[#64748B]">
-                      Modul Aktif:{' '}
-                      <strong className="text-[#162D43] font-bold">
-                        {client.allowedModules?.length || 0} dari {ALL_SYSTEM_MODULES.length}
-                      </strong>
-                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[#64748B]">
+                        Karyawan:{' '}
+                        <strong className="text-[#123456] font-bold">
+                          1 Pegawai ({isPtA ? 'Farhan' : 'Rian'})
+                        </strong>
+                      </span>
+                      <span className="text-[10px] text-[#64748B]">
+                        Modul Aktif:{' '}
+                        <strong className="text-[#197568] font-bold">
+                          {client.allowedModules?.length || 0}/{ALL_SYSTEM_MODULES.length}
+                        </strong>
+                      </span>
+                    </div>
 
                     {onSwitchUser && (
                       <button
@@ -503,9 +511,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="text-right sm:border-l sm:border-[#DFE7E8] sm:pl-4 text-xs">
-                    <span className="text-[#64748B] text-[11px]">Batas Karyawan</span>
-                    <p className="font-bold text-[#162D43]">{selectedClient.maxEmployees || 50} Pegawai</p>
+                  <div className="text-right sm:border-l sm:border-[#DFE7E8] sm:pl-4 text-xs space-y-1">
+                    <div>
+                      <span className="text-[#64748B] text-[11px]">Karyawan Terdaftar:</span>
+                      <p className="font-bold text-[#123456]">
+                        1 Pegawai ({selectedClient.tenantId.includes('pt-a') || selectedClient.tenantId.includes('elkyno') ? 'Farhan Maulana' : 'Rian Pratama'})
+                      </p>
+                    </div>
+                    <div className="text-[10px] text-[#64748B]">
+                      Batas Lisensi: {selectedClient.maxEmployees || 50} Max
+                    </div>
                   </div>
                 </div>
               </div>

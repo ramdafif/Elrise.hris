@@ -62,6 +62,10 @@ export class DemoAuthProvider implements IAuthenticationProvider {
   private allowedDemoUserIds = new Set([
     'user-superadmin',
     'user-admin-pt',
+    'user-admin-pt-a',
+    'user-emp-pt-a',
+    'user-admin-pt-b',
+    'user-emp-pt-b',
     'user-admin-project',
     'user-employee',
   ]);

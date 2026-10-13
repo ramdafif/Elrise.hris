@@ -2,16 +2,16 @@ import type {Metadata} from 'next';
 import './globals.css'; // Global styles
 
 export const metadata: Metadata = {
-  title: 'Nusantara HRIS Enterprise - Sistem Manajemen SDM & Payroll Indonesia',
+  title: 'Nusantara HRIS Enterprise',
   description: 'Sistem Informasi Manajemen SDM & Payroll Enterprise Indonesia yang telah diperkuat dengan Semi-Production Security & Hardening: kepatuhan UU PDP No. 27/2022, isolasi multi-tenant, prinsip empat mata (Four-Eyes), proteksi IDOR, dan enkripsi at-rest.',
   openGraph: {
-    title: 'Nusantara HRIS Enterprise - Sistem Manajemen SDM & Payroll Indonesia',
+    title: 'Nusantara HRIS Enterprise',
     description: 'Sistem Informasi Manajemen SDM & Payroll Enterprise Indonesia yang telah diperkuat dengan Semi-Production Security & Hardening: kepatuhan UU PDP No. 27/2022, isolasi multi-tenant, prinsip empat mata (Four-Eyes), proteksi IDOR, dan enkripsi at-rest.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Nusantara HRIS Enterprise - Sistem Manajemen SDM & Payroll Indonesia',
+    title: 'Nusantara HRIS Enterprise',
     description: 'Sistem Informasi Manajemen SDM & Payroll Enterprise Indonesia yang telah diperkuat dengan Semi-Production Security & Hardening: kepatuhan UU PDP No. 27/2022, isolasi multi-tenant, prinsip empat mata (Four-Eyes), proteksi IDOR, dan enkripsi at-rest.',
   },
 };

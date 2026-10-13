@@ -254,7 +254,7 @@ export default function HomePage() {
       isCancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSession.role, currentSession.employeeId]);
+  }, [currentSession.id, currentSession.role, currentSession.tenantId, currentSession.employeeId]);
 
   // Clock In handler
   const handleCheckIn = async (location: 'WFO' | 'WFH' | 'CLIENT_SITE' = 'WFO') => {

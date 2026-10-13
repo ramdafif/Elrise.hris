@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint .",
-    "clean": "next clean",
+    "clean": "rm -rf .next",
     "db:push": "node -e 'if (!process.env.DATABASE_URL?.startsWith(\"postgres\")) process.env.DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/nusantara_hris?schema=public\"; require(\"child_process\").spawnSync(\"npx\", [\"prisma\", \"db\", \"push\"], { stdio: \"inherit\", env: process.env });'",
     "db:seed": "node -e 'if (!process.env.DATABASE_URL?.startsWith(\"postgres\")) process.env.DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/nusantara_hris?schema=public\"; require(\"child_process\").spawnSync(\"npx\", [\"tsx\", \"prisma/seed.ts\"], { stdio: \"inherit\", env: process.env });'",
     "db:generate": "prisma generate"

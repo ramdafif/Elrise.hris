@@ -65,10 +65,16 @@ export async function POST(req: NextRequest) {
 
       // Audit Log
       AuditLogService.log({
-        actor,
-        action: 'UPDATE',
+        tenantId,
+        actorId: actor.id,
+        actorRole: actor.role,
+        actorName: actor.name,
+        action: 'UPDATE_TENANT_SETTINGS',
         entityType: 'TENANT_SETTINGS',
         entityId: tenantId,
+        ipAddress: req.headers.get('x-forwarded-for') || '127.0.0.1',
+        userAgent: req.headers.get('user-agent') || 'Browser',
+        status: 'SUCCESS',
         metadata: {
           tenantId,
           adminName,
@@ -112,10 +118,16 @@ export async function POST(req: NextRequest) {
       REGISTERED_TENANTS[newId] = newTenant;
 
       AuditLogService.log({
-        actor,
-        action: 'CREATE',
+        tenantId: newId,
+        actorId: actor.id,
+        actorRole: actor.role,
+        actorName: actor.name,
+        action: 'CREATE_TENANT',
         entityType: 'TENANT',
         entityId: newId,
+        ipAddress: req.headers.get('x-forwarded-for') || '127.0.0.1',
+        userAgent: req.headers.get('user-agent') || 'Browser',
+        status: 'SUCCESS',
         metadata: { tenantName, newId },
       });
 

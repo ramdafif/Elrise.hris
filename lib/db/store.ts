@@ -128,9 +128,10 @@ class HrisDataStore {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
-    // 1. Seed Attendance for today across first 25 employees
-    for (let i = 0; i < 25; i++) {
+    // 1. Seed Attendance for today across all employees
+    for (let i = 0; i < this.employees.length; i++) {
       const emp = this.employees[i];
+      if (!emp) continue;
       const isLate = i % 5 === 0;
       const checkInHour = isLate ? 8 : 7;
       const checkInMin = isLate ? 48 : 52;
@@ -147,7 +148,7 @@ class HrisDataStore {
         lateDurationMin: isLate ? 18 : 0,
         earlyLeaveMin: 0,
         status: isLate ? 'LATE' : 'PRESENT',
-        workLocation: i % 4 === 0 ? 'WFH' : 'WFO',
+        workLocation: i % 2 === 0 ? 'WFO' : 'WFH',
         latitudeIn: -6.2255,
         longitudeIn: 106.8286,
         source: 'WEB_PORTAL',
@@ -159,7 +160,7 @@ class HrisDataStore {
     this.leaveRequests = [
       {
         id: 'leave-req-01',
-        employeeId: 'emp-005', // Farhan
+        employeeId: 'emp-005', // Farhan (PT A)
         leaveTypeId: 'leave-ann',
         startDate: '2026-03-24',
         endDate: '2026-03-26',
@@ -170,7 +171,7 @@ class HrisDataStore {
       },
       {
         id: 'leave-req-02',
-        employeeId: 'emp-008', // Siti
+        employeeId: 'emp-b-001', // Rian (PT B)
         leaveTypeId: 'leave-sck',
         startDate: '2026-03-10',
         endDate: '2026-03-11',
@@ -178,31 +179,20 @@ class HrisDataStore {
         reason: 'Demam dan flu (Surat Dokter terlampir)',
         attachmentUrl: 'https://placehold.co/400x300.png?text=Surat+Keterangan+Dokter',
         status: 'APPROVED',
-        approvedBy: 'Hendra Wijaya (Manager)',
+        approvedBy: 'Siti Rahmawati (Admin PT B)',
         approvedAt: '2026-03-10T09:00:00Z',
         createdAt: '2026-03-09T18:30:00Z',
-      },
-      {
-        id: 'leave-req-03',
-        employeeId: 'emp-012',
-        leaveTypeId: 'leave-mar',
-        startDate: '2026-04-14',
-        endDate: '2026-04-16',
-        totalDays: 3,
-        reason: 'Pernikahan pribadi di Bandung',
-        status: 'PENDING',
-        createdAt: new Date().toISOString(),
       },
     ];
 
     // 3. Seed Sample Overtime Requests
     const otPay1 = calculateOvertimePay(18500000, 2000000, 3, false);
-    const otPay2 = calculateOvertimePay(17000000, 2000000, 2, false);
+    const otPay2 = calculateOvertimePay(9500000, 1500000, 2, false);
 
     this.overtimeRequests = [
       {
         id: 'ot-req-01',
-        employeeId: 'emp-005', // Farhan
+        employeeId: 'emp-005', // Farhan (PT A)
         date: '2026-03-04',
         startTime: '17:30',
         endTime: '20:30',
@@ -211,20 +201,20 @@ class HrisDataStore {
         overtimePay: otPay1.overtimePay,
         reason: 'Deployment Hotfix Production Server v2.4',
         status: 'APPROVED',
-        approvedBy: 'Hendra Wijaya (Manager)',
+        approvedBy: 'Budi Hartono (Admin PT A)',
         approvedAt: '2026-03-05T08:30:00Z',
         createdAt: '2026-03-04T17:00:00Z',
       },
       {
         id: 'ot-req-02',
-        employeeId: 'emp-007', // Fauzan
+        employeeId: 'emp-b-001', // Rian (PT B)
         date: '2026-03-05',
         startTime: '17:30',
         endTime: '19:30',
         durationHours: 2,
         calculatedHours: otPay2.weightedHours,
         overtimePay: otPay2.overtimePay,
-        reason: 'Database Migration & Index Rebalancing',
+        reason: 'Optimalisasi Query PostgreSQL Server Surabaya',
         status: 'PENDING',
         createdAt: '2026-03-05T17:00:00Z',
       },
@@ -349,7 +339,7 @@ class HrisDataStore {
       startDate: '2026-03-01',
       endDate: '2026-03-31',
       paymentDate: '2026-03-27',
-      status: 'CALCULATED',
+      status: 'REVIEW',
       totalEmployees: ptBEmployees.length,
       totalGrossPay: 0,
       totalPph21: 0,
